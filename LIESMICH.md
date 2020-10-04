@@ -13,11 +13,11 @@
 - super einfach nachzubauen
 - Plug&Play Firmware
 
-Als Sensor ist im Moment ein Bewgungssensor (PIR) und ein Helligkeitssensor implementiert. Dies ist aber nur ein Beispiel. So ziemlich alle Sensoren können verwendet werden, ob Temperatur, Luftfeuchtigkeit, Luftdruck, H�henmesser, Lichtintensit�t, UV Index,
-Anwesenheitssensoren, Magnetschalter, Ersch�tterungs-Sensoren, usw also im Prinzip alle Arten von Sensoren. Voraussetzung ist dass der Sensor bis mindestens 2.2V Betriebsspannung spezifiziert ist. Sonst kann die Batterieladung nicht voll ausgenutzt werden.
+Als Sensor ist im Moment ein Bewgungssensor (PIR) und ein Helligkeitssensor implementiert. Dies ist aber nur ein Beispiel. So ziemlich alle Sensoren können verwendet werden, ob Temperatur, Luftfeuchtigkeit, Luftdruck, Höhenmesser, Lichtintensität, UV Index,
+Anwesenheitssensoren, Magnetschalter, Erschütterungs-Sensoren, usw also im Prinzip alle Arten von Sensoren. Voraussetzung ist dass der Sensor bis mindestens 2.2V Betriebsspannung spezifiziert ist. Sonst kann die Batterieladung nicht voll ausgenutzt werden.
 
-Die Leiterplatten passen zu im Handel erh�ltlichen PVC Geh�usen, welche in etwa die Gr�sse einer Streichholzschachtel haben. Die verwendeten Komponenten sind am Markt eingef�hrt, jederzeit erh�ltlich und
-dadurch kosteng�nstig zu beschaffen.
+Die Leiterplatten passen zu im Handel erhältlichen PVC Gehäusen, welche in etwa die Grösse einer Streichholzschachtel haben. Die verwendeten Komponenten sind am Markt eingeführt, jederzeit erhältlich und
+dadurch kostengünstig zu beschaffen.
 
 # Warum TiLLi?
 - kompakte Bauform (Streichholzschachtel).
@@ -31,7 +31,7 @@ dadurch kosteng�nstig zu beschaffen.
 ## Allgemein
 - Spannung von ca. 1.8V bis 3.6V
 - Betrieb mit CR2032 Zelle bis zu 1 Jahr Lebensdauer
-- Leiterplatte passend zu im Handel erh�ltlichen Geh�usen
+- Leiterplatte passend zu im Handel erhältlichen Gehäusen
 
 
 ## Radio
@@ -43,7 +43,7 @@ dadurch kosteng�nstig zu beschaffen.
 - Link Budget bis 140dB
 - Empfindlichkeit -125 dBm
 - Reichweite t.b.d., ist aber extrem weit (2km sind normal)
-- HF Kommunikation verschl�sselt
+- HF Kommunikation verschlüsselt
 
 ## Basisband
 - Atmel (Microchip) ATMega328p-au
@@ -51,7 +51,7 @@ dadurch kosteng�nstig zu beschaffen.
 - Ruhestrom < 2uA mit externem Quarz
 - Ruhestrom ca. 4uA mit internem RC Oszillator
 - 1 MHz Takt Sender erlaubt Betriebsspannung bis 1.8V
-- I2C f�r Sensoren
+- I2C für Sensoren
 - mindestens 4 weitere GPIO
 
 ## Sensoren
@@ -67,12 +67,12 @@ dadurch kosteng�nstig zu beschaffen.
 - Open Source Software C++
 - Software kann einfach individuell angepasst werden
 - Programmierung mit Arduino IDE
-- ~~Konfiguration der Nodes �ber serielles Interface (FTDI Adapter)~~
+- ~~Konfiguration der Nodes über serielles Interface (FTDI Adapter)~~
 - Konfigurations- und Kalibrierdaten im EEPROM gespeichert.
-- ~~EEPROM verschl�sselt~~(kommt)
+- ~~EEPROM verschlüsselt~~(kommt)
 - Flashen
   - mit ISP Adapter oder
-  - seriell mit FTDI Adapter �ber Bootloader
+  - seriell mit FTDI Adapter über Bootloader
 - bis zu 4 externe Interrupts (z.B. 4 Tasten) konfigurierbar
 
 
