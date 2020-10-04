@@ -30,9 +30,10 @@
  * arduino-lmic/project_config/lmic_project_config.h or from your BOARDS.txt.
  *
  *******************************************************************************/
-
- // References:
- // [feather] adafruit-feather-m0-radio-with-lora-module.pdf
+/*******************************************************************************
+  Adapted by nurazur for Tilly
+  same license as above applies. If any doubt, GNU GPL Version 3 is to be used.
+********************************************************************************/
 
 #include <lmic.h>
 #include <hal/hal.h>
@@ -163,7 +164,7 @@ uint8_t brightness(uint8_t LedA, uint8_t LedK)
 
     // change pinmode of Kathode to OUTPUT, LOW so that LED can be used as LED
     init_Led(LedK);
-    
+
     return (uint8_t)(counter >>8);
 }
 
@@ -177,8 +178,8 @@ void init_Led(uint8_t LedK)
 /***                      Sleep Modes                                      ***/
 /*****************************************************************************/
 
-uint16_t watchdog_counter;
-uint16_t pir_inhibit_counter;
+volatile uint16_t watchdog_counter;
+volatile uint16_t pir_inhibit_counter;
 bool pir_is_off=true;
 ostime_t led_on_time;
 bool watchdog_expired = false;
@@ -192,23 +193,63 @@ bool tx_is_complete = false;
 // requires a 32.768kHz Crystal
 ISR(TIMER2_COMPA_vect)
 {
-    watchdog_counter++;
-    pir_inhibit_counter++;
+    //watchdog_counter++;
+    //pir_inhibit_counter++;
 }
 
+enum prescaler
+{
+  OFF,
+  T_8SECONDS,
+  T_2SECONDS,
+  T_1SECOND,
+  T_500MILLIS,
+  T_250MILLIS,
+  T_62_5MILLIS,
+  T_8MILLIS
+};
 
-static void setup_timer2()
+static void setup_timer2(uint8_t st)
 {
   // clock input to timer 2 from XTAL1/XTAL2
   ASSR = bit (AS2);
   while (ASSR & 0x1f);
 
-  // set up timer 2 to count up to 256 * 1024  (32768) = 8s
   TCCR2A = bit (WGM21);     //WGM20 and WGM22 in TCCR2B is set 0, Mode of operation: CTC
-  TCCR2B = bit (CS22) | bit (CS21) | bit (CS20);    // Prescaler of 1024
-  //TCCR2B = bit (CS21) | bit (CS20);    // Prescaler of 32
-  //TCCR2B = bit (CS20);    // Prescaler of 1
-  //TCCR2B &= 0xF8; // timer off, CS0=0, CS1=0, CS2=0
+
+  switch (st)
+  {
+      case OFF:
+        TCCR2B  &= 0xF8; // timer off, CS0=0, CS1=0, CS2=0
+        break;
+        
+    case T_8SECONDS:
+        TCCR2B = bit (CS22) | bit (CS21) | bit (CS20);   //111b
+        break;
+
+    case T_2SECONDS:
+        TCCR2B = bit (CS22) | bit (CS21);   // 110b
+        break;
+
+    case T_1SECOND:    // 128
+        TCCR2B = bit (CS22) | bit (CS20); //101b
+        break;
+
+    case T_500MILLIS:// 64
+        TCCR2B = bit (CS22); //100b
+        break;
+
+    case T_250MILLIS:// 32
+        TCCR2B = bit (CS21) | bit (CS20); //011b
+        break;
+    case T_62_5MILLIS: // 8
+        TCCR2B = bit (CS21); //010b
+        break;
+        
+    case T_8MILLIS: // 1
+        TCCR2B = bit (CS21) | bit (CS20); //001b
+        break;
+  }
 
   while (ASSR & 0x08);   // wait until OCR2A can be updated
   OCR2A =  255;         // count to 255 (zero-relative)
@@ -225,17 +266,12 @@ static void setup_timer2()
 #endif
 
 
-
-
-
 /*****************************************************************************/
 /*
      Read VCC by taking measuring the 1.1V reference and taking VCC as reference voltage.
      set the reference to Vcc and the measurement to the internal 1.1V reference
 */
 /*****************************************************************************/
-#include "vcc.h"
-/*
 unsigned int readVcc(void) {
 
   #if defined(__AVR_ATmega32U4__) || defined(__AVR_ATmega1280__) || defined(__AVR_ATmega2560__)
@@ -252,22 +288,21 @@ unsigned int readVcc(void) {
   while (bit_is_set(ADCSRA,ADSC)); // measuring
   uint8_t low  = ADCL; // must read ADCL first - it then locks ADCH
   uint8_t high = ADCH; // unlocks both
-  long result = (high<<8) | low;
+  uint16_t result = (high<<8) | low;
   return result;
 }
-*/
-//extern 
+
 unsigned int vcc_reading=1;
 
 /*****************************************************************************/
 /*
-ugly handler for PIR events. When an PIR event is triggered, the PIR is switched off for
+handler for PIR events. When an PIR event is triggered, the PIR is switched off for
 PIR_INHIBIT_DELAY counts (1 count =8s). After this, the PIR VCC ist switched on again.
 This is to save power in situations where the PIR would constantly trigger.
 
 There is a Heartbeat funktion which sends a "I am alive" packet every SENDDELAY counts (1 count = 8s)
-Note that SENDDELAY cannot be 0 at the moment!
-
+Note that SENDDELAY cannot be 0 because this would turn off the timner!
+The timer is needed for the PIR_INHIBIT_DELAY count.
 */
 
 static void wake_from_sleep_service_routine(void)
@@ -280,34 +315,57 @@ static void wake_from_sleep_service_routine(void)
     {
         #ifdef USE_CRYSTAL
         //********    go sleep          *****/
-        if (node.SendDelay != 0)
-            LowPower.powerSave(SLEEP_FOREVER, ADC_OFF, BOD_OFF, TIMER2_ON);
+        if (node.Flag_LED_blink_active && node.Flag_LED_enable)
+        {
+         /***** blink for 8 seconds *****/
+            setup_timer2(T_500MILLIS);
+            for (uint8_t j=0; j<16; j++)
+            {
+                digitalWrite(node.LedPin, !digitalRead(node.LedPin));
+                LowPower.powerSave(SLEEP_FOREVER, ADC_OFF, BOD_OFF, TIMER2_ON);
+            }
+            if (LED_blink_time != 0xff)
+            {
+                LED_blink_time--;
+                if (LED_blink_time ==0)
+                {
+                    node.Flag_LED_blink_active =0;
+                    digitalWrite(node.LedPin, LOW);
+                    setup_timer2(T_8SECONDS);
+                }
+            }
+        }
         else
         {
-            // only wake up from external pin change interrupt
-            timer2_setup_done = true;
-            TCCR2B &= 0xF8; // timer 2 off, CS0=0, CS1=0, CS2=0
-            LowPower.powerDown(SLEEP_FOREVER, ADC_OFF, BOD_OFF);
+            if (node.SendDelay != 0)
+                LowPower.powerSave(SLEEP_FOREVER, ADC_OFF, BOD_OFF, TIMER2_ON);
+            else
+            {
+                // only wake up from external pin change interrupt
+                timer2_setup_done = true;
+                TCCR2B &= 0xF8; // timer 2 off, CS0=0, CS1=0, CS2=0
+                LowPower.powerDown(SLEEP_FOREVER, ADC_OFF, BOD_OFF);
+            }
         }
-
 
         //*********** after wake up...   *****/
 
         // workaround for timer2 setup failure (registers read OK but timer runs fast)
         // this is a one-time task after the board has started.
-        if (watchdog_counter>0  && !timer2_setup_done)
+        if (!timer2_setup_done)
         {
-            setup_timer2(); // set it up again. Cures the problem.
+            setup_timer2(T_8SECONDS); // set it up again. Cures the problem.
             watchdog_counter = 0;
             timer2_setup_done =  true;
             continue;
         }
 
+
         #else // low power RC Oscillator
         //********    go sleep           *****/
         if (node.Flag_LED_blink_active && node.Flag_LED_enable)
         {
-            for (uint8_t j=0; j<8; j++) 
+            for (uint8_t j=0; j<8; j++)
             {
                 digitalWrite(node.LedPin, !digitalRead(node.LedPin));
                 LowPower.powerDown(SLEEP_1S, ADC_OFF, BOD_OFF);
@@ -315,26 +373,26 @@ static void wake_from_sleep_service_routine(void)
 
             if (LED_blink_time != 0xff)
             {
-                if (LED_blink_time ==0) 
+                LED_blink_time--;
+                if (LED_blink_time ==0)
                 {
                     node.Flag_LED_blink_active =0;
                     digitalWrite(node.LedPin, LOW);
                 }
-                LED_blink_time--;
             }
-            
         }
         else
         {
             LowPower.powerDown(SLEEP_8S, ADC_OFF, BOD_OFF);
         }
         //*********** after wake up...   *****/
+        #endif
         if (!event_triggered)
         {
             watchdog_counter++;
             pir_inhibit_counter++;
         }
-        #endif
+
 
         // switch ON PIR after dead time
         pir_inhibit_expired = (pir_inhibit_counter >= node.PIRDisableDelay) && pir_is_off;
@@ -359,14 +417,14 @@ static void wake_from_sleep_service_routine(void)
             Serial.println("heartbeat"); Serial.flush();
             watchdog_counter =0;
             watchdog_expired = false;
-            
+
             if(node.Flag_heartbeat_enable)
             {
             msg.event = 1;
             msg.vcc = node.VccReference / vcc_reading;
             msg.count = count++;
             msg.brightness = brightness(node.LedPin, node.LedPin_K);
-            
+
             //if (node.Flag_heartbeat_enable) geht so nicht!
             do_send(&sendjob, (uint8_t*)&msg, sizeof(msg));
             return;
@@ -411,7 +469,7 @@ static void wake_from_sleep_service_routine(void)
                 // not yet implemented
             }
 
-            
+
             uint8_t *pnode = (uint8_t*) &node;
             msg.event = (event_triggered &0x0F) << 1;
             if (pnode[0] & msg.event)
@@ -468,7 +526,7 @@ void receive()
                     break;
                 case 0x81: // blink
                     node.Flag_LED_blink_active=1;
-                    LED_blink_time = 0xff; 
+                    LED_blink_time = 0xff;
                     if (++i < LMIC.dataLen)
                         LED_blink_time = data[i];
                     if (++i < LMIC.dataLen)
@@ -480,7 +538,7 @@ void receive()
                     {
                         uint8_t *pnode = (uint8_t*) &node;
                         pnode[0] = (pnode[0] &0xE0) | (data[i] & 0x3F);
-                    } 
+                    }
                     break;
                 case 0xFD:
                     {
@@ -542,12 +600,12 @@ void onEvent (ev_t ev) {
         case EV_TXCOMPLETE:
             Serial.println(F("EV_TXCOMPLETE"));
             if (LMIC.txrxFlags & TXRX_ACK) Serial.println(F("txrx_ack"));
-            if (LMIC.dataLen) 
+            if (LMIC.dataLen)
             {
               // data have been received!
                receive();
             }
-            tx_is_complete = true; // notify main loop 
+            tx_is_complete = true; // notify main loop
             Serial.flush();
             break;
         case EV_LOST_TSYNC:
@@ -587,17 +645,18 @@ void setup() {
     Serial.begin(SERIALBAUD);
     delay(100);
     Serial.println(F("Start"));
-    
+
     EEPROM.get(0, node);
     //Serial.println(node.checksum, HEX);
     //Serial.println(checksum_crc16((uint8_t*) &node, offsetof(NodeConfig, checksum)),HEX );
     //Serial.println(sizeof(NodeConfig));
-    
-    if (true)
-    // if (!verify_checksum_crc16()) // when stable.
+
+    //if (true) // for debug and test
+    Serial.print ("CRC ");
+    if (!verify_checksum_crc16()) // for production
     {
         // calculate checksum and put configuration into EEPROM
-        Serial.println("CRC bad");
+        Serial.println("bad");
         {
             NodeConfig nNode;
             node = nNode;
@@ -607,36 +666,30 @@ void setup() {
     }
     else
     {
-        Serial.println("CRC OK");
+        Serial.println("OK");
     }
-    
+
     pinMode(node.LedPin, OUTPUT);
-    if(node.LedPin_K >=0) 
+    if(node.LedPin_K >=0)
     {
          init_Led(node.LedPin_K);
     }
-    
+
     pinMode(node.PIRVccPin, OUTPUT);
-    
+
 
 
     #ifdef USE_CRYSTAL
     Serial.println("crystal timer");
-    setup_timer2();
+    setup_timer2(T_8SECONDS);
     #else
     Serial.println("Using WDT");
-    /*
-    {
-        setup_watchdog(watchdog_wakeup);    // Wake up after 8 sec
-        PRR = bit(PRTIM1);                  // only keep timer 0 going
-    }
-    */
     #endif
-    
+
 
     //Serial.println(node.checksum,HEX);
     //Serial.println(node.Flag_LED_enable);
-    
+
 
     /* for TEST only!
         node.Flag_heartbeat_enable=1;
@@ -655,16 +708,16 @@ void setup() {
     Serial.print("Flag_PCI3_enable "); Serial.println(node.Flag_PCI3_enable);
     Serial.print("Flag_LED_enable "); Serial.println(node.Flag_LED_enable);
     Serial.print("Flag_LED_blink_active "); Serial.println(node.Flag_LED_blink_active);
-    
+
     Serial.print("Flag_reserved "); Serial.println(node.Flag_reserved);
     */
-    uint8_t *pnode = (uint8_t*) &node;
-    Serial.print("Flags LSB "); Serial.println(pnode[0], HEX);
+    //uint8_t *pnode = (uint8_t*) &node;
+    //Serial.print("Flags LSB "); Serial.println(pnode[0], HEX);
     //Serial.print("Flags LSB "); Serial.println(*((uint8_t*) &node), HEX);// ja man koennte das so machen, aber der Code ist unlesbar!
-    Serial.print("Flags MSB "); Serial.println(pnode[1], HEX);
-    
+    //Serial.print("Flags MSB "); Serial.println(pnode[1], HEX);
+    //Serial.print("LMIC size in RAM: "); Serial.println(sizeof(LMIC)); // LMIV measures 796 BYtes!
     Serial.flush();
-    
+
     if (node.PCI0Pin >=0)
     {
         pinMode(node.PCI0Pin, node.PCI0Trig>>2);  // set the pin to input or input with Pullup
@@ -700,11 +753,11 @@ void setup() {
     // Set static session parameters. Instead of dynamically establishing a session
     // by joining the network, precomputed session parameters are be provided.
     #ifdef PROGMEM
-    // On AVR, these values are stored in flash and only copied to RAM once. 
+    // On AVR, these values are stored in flash and only copied to RAM once.
     memcpy_P(LMIC.nwkKey, NWKSKEY, sizeof(NWKSKEY));
     memcpy_P(LMIC.artKey, APPSKEY, sizeof(APPSKEY));
     LMIC_setSession (0x13, DEVADDR, NULL, NULL);
-    
+
     #else
     // If not running an AVR with PROGMEM, just use the arrays directly
     LMIC_setSession (0x13, DEVADDR, NWKSKEY, APPSKEY);
@@ -781,12 +834,12 @@ void setup() {
     LMIC_setClockError(MAX_CLOCK_ERROR * 2 / 100);
     // Start job
     Payload msg;
-    msg.event =0;
+    msg.event =0; //  0 = Restart Flag
     msg.count= count++;
     msg.vcc = readVcc(); // value to be used for calibration
     msg.brightness = brightness(node.LedPin, node.LedPin_K);
     do_send(&sendjob, (uint8_t*)&msg, sizeof(msg));
-    
+
 }
 
 void loop() {
