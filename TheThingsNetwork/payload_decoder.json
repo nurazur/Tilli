@@ -1,0 +1,42 @@
+function Decoder(bytes, port)
+{
+  var event = bytes[0];
+  var event_str="";
+
+
+  if(event ===0)
+  {
+    event_str = 'Restart';
+  }
+  else if(event==1)
+  {
+    event_str = "Heartbeat";
+  }
+  else if (event==2)
+  {
+    event_str = "PCI0";
+  }
+  else if(event == 4)
+  {
+    event_str = "PIR";
+  }
+  else if (event == 8) event_str = "PCI2";
+  else if (event== 16) event_str = "PCI3";
+
+  var count = bytes[2]<<8 | bytes[1];
+  var vcc = bytes[4]<<8 | bytes[3];
+  var bri = bytes[5];
+  if (bytes.length >= 9)
+  {
+    var temp = (bytes[7]<<8 | bytes[6])/100.0-100;
+    temp = Math.round(temp * 100) / 100;
+
+    var hum = bytes[8] / 2.0;
+
+    return {event: event_str, count: count, vcc:vcc, H:bri, T:temp, RH:hum};
+  }
+  else
+  {
+    return {event: event_str, H:bri, count: count, vcc:vcc};
+  }
+}
