@@ -33,10 +33,11 @@
 
 
 extern unsigned int vcc_reading;
-
+extern unsigned int readVcc(void);
+/*
 unsigned int readVcc(void) 
 {
-  #if defined(__AVR_ATmega32U4__) || defined(__AVR_ATmega1280__) || defined(__AVR_ATmega2560__)
+  #if defined(__AVR_ATmega32U4__) || defined(__AVR_ATmega1280__) || defined(__AVR_ATmega2560__)  || defined (ARDUINO_AVR_ATmega1284) || defined(ARDUINO_AVR_ATmega644)
       ADMUX = _BV(REFS0) | _BV(MUX4) | _BV(MUX3) | _BV(MUX2) | _BV(MUX1);
   #elif defined (__AVR_ATtiny24__) || defined(__AVR_ATtiny44__) || defined(__AVR_ATtiny84__)
       ADMUX = _BV(MUX5) | _BV(MUX0);
@@ -53,7 +54,7 @@ unsigned int readVcc(void)
   uint16_t result = (high<<8) | low;
   return result;
 }
-
+*/
 
 // ----------------------------------------
 // Registers Mapping

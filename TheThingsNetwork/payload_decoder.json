@@ -1,9 +1,9 @@
-function Decoder(bytes, port)
+function Decoder(bytes, port) 
 {
   var event = bytes[0];
   var event_str="";
-
-
+  
+ 
   if(event ===0)
   {
     event_str = 'Restart';
@@ -26,13 +26,26 @@ function Decoder(bytes, port)
   var count = bytes[2]<<8 | bytes[1];
   var vcc = bytes[4]<<8 | bytes[3];
   var bri = bytes[5];
-  if (bytes.length >= 9)
+  var temp, hum, pres;
+  
+  if (bytes.length >=11)
   {
-    var temp = (bytes[7]<<8 | bytes[6])/100.0-100;
+    pres  = (bytes[10]<<8 | bytes[9])/100.0 + 500; 
+    pres = Math.round(pres * 100) / 100;
+    
+    temp = (bytes[7]<<8 | bytes[6])/100.0-100;
     temp = Math.round(temp * 100) / 100;
-
-    var hum = bytes[8] / 2.0;
-
+    
+    hum = bytes[8] / 2.0;
+    return {event: event_str, count: count, vcc:vcc, H:bri, T:temp, RH:hum, P:pres};
+  }
+  else if (bytes.length >= 9)
+  {
+    temp = (bytes[7]<<8 | bytes[6])/100.0-100;
+    temp = Math.round(temp * 100) / 100;
+    
+    hum = bytes[8] / 2.0;
+    
     return {event: event_str, count: count, vcc:vcc, H:bri, T:temp, RH:hum};
   }
   else

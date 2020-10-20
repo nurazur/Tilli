@@ -13,7 +13,7 @@
 - super einfach nachzubauen
 - Plug&Play Firmware
 
-Als Sensor ist im Moment ein Bewgungssensor (PIR) und ein Helligkeitssensor implementiert. Dies ist aber nur ein Beispiel. So ziemlich alle Sensoren können verwendet werden, ob Temperatur, Luftfeuchtigkeit, Luftdruck, Höhenmesser, Lichtintensität, UV Index,
+Als Sensor ist im Moment ein Bewgungssensor (PIR), ein Helligkeitssensor, und ein Sensor implementiert. So ziemlich alle Sensoren können verwendet werden, ob Temperatur, Luftfeuchtigkeit, Luftdruck, Höhenmesser, Lichtintensität, UV Index,
 Anwesenheitssensoren, Magnetschalter, Erschütterungs-Sensoren, usw also im Prinzip alle Arten von Sensoren. Voraussetzung ist dass der Sensor bis mindestens 2.2V Betriebsspannung spezifiziert ist. Sonst kann die Batterieladung nicht voll ausgenutzt werden.
 
 Die Leiterplatten passen zu im Handel erhältlichen PVC Gehäusen, welche in etwa die Grösse einer Streichholzschachtel haben. Die verwendeten Komponenten sind am Markt eingeführt, jederzeit erhältlich und
@@ -57,8 +57,9 @@ dadurch kostengünstig zu beschaffen.
 ## Sensoren
 - Bewgungsmelder (PIR)
 - Helligkeitssensor mittels Photodiode oder lED
-- ~~HTU21D~~
-- ~~SHT21, SHT20, SHT25~~
+- HTU21D
+- SHT21, SHT20, SHT25
+- BME280
 - ~~SHT30, SHT31, SHT35~~
 - I2C Bus Basierte Sensoren leicht implementierbar
 - 4 digitale GPIOs
@@ -69,7 +70,7 @@ dadurch kostengünstig zu beschaffen.
 - Programmierung mit Arduino IDE
 - ~~Konfiguration der Nodes über serielles Interface (FTDI Adapter)~~
 - Konfigurations- und Kalibrierdaten im EEPROM gespeichert.
-- ~~EEPROM verschlüsselt~~(kommt)
+- ~~EEPROM verschlüsselt~~
 - Flashen
   - mit ISP Adapter oder
   - seriell mit FTDI Adapter über Bootloader

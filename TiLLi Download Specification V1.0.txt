@@ -1,0 +1,106 @@
+TiLLi Download Data Specification
+=================================
+
+Syntax:
+<header>[data][<header>[data]]...
+
+<header>: 1 Byte
+[data] optional data Bytes depending on context.
+ 
+2 bits to distinct between configuration/ instruction. 
+
+1 i i i i i i i  = instruction, i = number from 0 to 127
+0 c c c c c c c  = configuration, c = number from 0 to 127
+
+several <header>[data] sequences can be concatenated to one packet.
+
+configuration:
+===============
+6 bits  of offset into the node configuration structure.
+0 0 x x x x x x  = configuration (RAM only), x = offset
+0 1 x x x x x x  = configuration (RAM and EEPROM) x = offset
+
+[data]: a string of data bytes. Bytes will be written into the configuration in consecutive manner. 
+the number of data bytes is given by <number of bytes received> -1
+
+example:
+received data 0x43, 0x0E
+
+meaning: offset 0x03 is pointing to TX Power, 0x0E is the power in dBm.
+
+if <header> & 0x40 (bit 6 is 1): apply immediately and put new value into EEPROM 
+else               (bit 6 is 0): apply immediately, do not put new value into EEPROM.
+
+Important note: All data that deal with the LMIC stack are only valid after reboot.
+
+configuration table
+===================
+
+    Address   | length  |
+              | [bytes] |
+    ----------------------------------------------------------------------------        
+    0x00:0    |   2     | Flag_heartbeat_enable
+    0x00:1    |         | Flag_PCI0_enable
+    0x00:2    |         | Flag_PIR_enable
+    0x00:3    |         | Flag_PCI2_enable
+    0x00:4    |         | Flag_PCI3_enable
+    0x00:5    |         | Flag_LED_enable
+    0x00:6    |         | Flag_LED_blink_active
+    0x00:7-15 |         | Flag_reserved   
+    0x02      |   1     | DataRate                LoRa SF, BW and FEC scheme
+    0x03      |   1     | TxPower                 Transmit Power in dBm
+    0x04      |   2     | SendDelay               Interval between Heartbeats
+    0x06      |   2     | PIRDisableDelay         Time the PIR is disabled after it has triggered
+    0x07      |   1     | LedPin                  Pins are signed values, -1 indicates "unused"
+    0x08      |   1     | LedPin_K
+    0x09      |   1     | PIRVccPin
+    0x0A      |   1     | I2CPowerPin
+    0x0B      |   1     | PCI0Pin   
+    0x0C      |   1     | PIRPin                  PCI1Pin is renamed PIRPin
+    0x0D      |   1     | PCI2Pin
+    0x0E      |   1     | PCI3Pin
+    0x0F      |   1     | PCI0Trig
+    0x10      |   1     | PIRTrig
+    0x11      |   1     | PCI2Trig
+    0x12      |   1     | PCI3Trig
+    0x13      |   4     | VccReference
+    0x17      |   2     | checksum
+
+
+instructions:
+=============
+1 0 0 0 1 0 0 0     0x88    device soft reset
+
+1 1 1 1 1 1 0 1     0xFD    device Factory Defaults and reset
+
+1 0 0 0 0 0 0 1     0x81    blink LED 
+                            optionally followed by 2 bytes of data: 
+                            0x81 [blinktime LSB [blinktime MSB]]
+                            blinktime 8/16 bits, time in seconds/8
+                            example1: 0x81 - blink, no time limit
+                            example2: 0x81, 0x0F - blink LED 15*8 seconds (2 minutes)
+                            example3: 0x81, 0xC2, 0x01 - blink 450*8s = 1 hour
+                   
+1 0 0 0 0 0 0 0     0x80    stop LED blink
+
+1 0 0 0 0 0 1 0     0x82    enable / disable Interrupts and heartbeat
+                            followed by 1 Byte Bit-Mask: if bit=0, disable Interrupt / Function
+                                                if bit=1, enable Interrupt /  Function
+                   
+                            0 0 x x x x x x 
+                                | | | | | |_ Heartbeat
+                                | | | | |___ PCI0
+                                | | | |_____ PIR
+                                | | |_______ PCI2
+                                | |_________ PCI3
+                                |____________LED
+                       
+                            example: 0x82, 0x27 - enable heartbeat, PCI0 and PIR and LED, disable PCI2 and PCI3
+                   
+1 1 0 1 0 1 0 1     0xD5    Permanent sleep at lowest possible current. Side note: put letters "d5" upside down and you get "sp" - sleep permanently
+                            Note: wake up only by reset or power cycle.
+                            
+                   
+
+
+                    
