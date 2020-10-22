@@ -42,7 +42,7 @@
 #include "ttn-abp-config.h"
 
 /******  Serial Port  ****/
-// serial port needs to be disabled when using bME280 with ATmega328P devices, i.e. TiNo hardware
+// serial port needs to be disabled when using BME280 with ATmega328P devices, i.e. TiNo hardware
 #define USE_SERIAL
 /*************************/
 
@@ -102,9 +102,6 @@ static uint16_t count;
 
 //#define USE_I2C_PULLUPS  true // use this for HTU21D in case no Pullups are mounted.
 #define USE_I2C_PULLUPS false // use this in case external Pullups are used.
-#include "SoftwareWire.h"
-SoftwareWire i2c(SDAPIN, SCLPIN, USE_I2C_PULLUPS);
-
 
 /**********      HTU21D       ******/
 #ifdef USE_HTU21D
@@ -119,22 +116,21 @@ typedef struct
    uint8_t humidity;    // Humidity reading
 }  Payload;
 
-#include "HTU21D_SoftwareWire.h"
 
+#include "SoftwareWire.h"
+SoftwareWire i2c(SDAPIN, SCLPIN, USE_I2C_PULLUPS);
+
+#include "HTU21D_SoftwareWire.h"
 HTU21D_SoftI2C myHTU21D(&i2c);
-#endif
 
 static void Start_HTU21D(void)
 {
-    #ifdef USE_HTU21D
     i2c.beginTransmission (HTDU21D_ADDRESS);
     if (i2c.endTransmission() == 0)
     {
         //Serial.println ("Found HTU21D");
-        //myHTU21D = new HTU21D_SoftI2C(&i2c);
         delay(100);
         myHTU21D.begin();
-        //Serial.println ("HTU21D started");
         myHTU21D.setResolution(HTU21D_RES_RH10_TEMP13);
     }
     else
@@ -143,10 +139,8 @@ static void Start_HTU21D(void)
         Serial.println ("No HTU21D found");
         #endif
     }
-    #endif
 }
 
-#ifdef USE_HTU21D
 static void Measure_HTU21D(Payload& msg);
 static void Measure_HTU21D(Payload& msg)
 {
@@ -170,6 +164,10 @@ static void Measure_HTU21D(Payload& msg)
 /**********      BME280     **********/
 #ifdef USE_BME280
 
+// Flash size not sufficient to acommodate serial debug outputs. 
+#ifdef USE_SERIAL
+#undef USE_SERIAL
+#endif
 typedef struct
 {
    uint8_t  event;
@@ -181,13 +179,15 @@ typedef struct
    uint16_t pressure; // absolute pressure - 500 hpa
 }  Payload;
 
+#include "SoftwareWire.h"
+SoftwareWire i2c(SDAPIN, SCLPIN, USE_I2C_PULLUPS);
+
 #include <BME280_SoftwareWire.h>
 BME280_SoftwareWire bme(&i2c);
-#endif
+
 
 static void Start_BME280(void)
 {
-    #ifdef USE_BME280
     i2c.beginTransmission (0x76);
 
     if (i2c.endTransmission() == 0)
@@ -196,10 +196,8 @@ static void Start_BME280(void)
         Serial.println ("Found BME280");Serial.flush();
         #endif
     }
-    #endif
 }
 
-#ifdef USE_BME280
 static void Measure_BME280(Payload& msg);
 static void Measure_BME280(Payload& msg)
 {
@@ -227,6 +225,104 @@ static void Measure_BME280(Payload& msg)
     Serial.flush();
     #endif
     digitalWrite(node.I2CPowerPin, LOW);
+}
+#endif
+
+
+/**********      DS18B20     **********/
+#ifdef USE_DS18B20
+typedef struct
+{
+   uint8_t  event;
+   uint16_t count;
+   uint16_t vcc;
+   uint8_t  brightness;
+   uint16_t temp;   // Temperature reading
+}  Payload;
+
+#include <DallasTemperature.h>       // GNU Lesser General Public License v2.1 or later
+#include <OneWire.h>                 // license terms not clearly defined.
+
+#define ONE_WIRE_BUS SDAPIN
+#define ONE_WIRE_POWER node.I2CPowerPin
+
+OneWire oneWire(ONE_WIRE_BUS);
+DallasTemperature ds18b20(&oneWire);
+
+static uint8_t start_ds18b20(DallasTemperature *sensor, byte PowerPin);
+
+
+// One-Wire DS18B20 start-up sequence
+static uint8_t start_ds18b20(DallasTemperature *sensor, byte PowerPin)
+{
+    pinMode(PowerPin, OUTPUT); // set power pin for DS18B20 to output
+    digitalWrite(PowerPin, HIGH); // turn DS18B20 sensor on
+    delay(10); // Allow 10ms for the sensor to be ready
+    sensor->begin();
+    //sensor->setResolution(10); //Resolutiuon is 0.125 deg, absolutely sufficient!
+    delay(10); // Allow 10ms for the sensor to be ready
+    return sensor->getDeviceCount();
+}
+
+static void stop_ds18b20(byte PowerPin)
+{
+    digitalWrite(PowerPin, LOW); // turn Sensor off to save power
+}
+
+
+static void Start_DS18B20(void)
+{
+    //--------------------------------------------------------------------------
+    // test if 1-wire devices are present
+    //--------------------------------------------------------------------------
+    pinMode(ONE_WIRE_POWER, OUTPUT); // set power pin for DS18B20 to output
+    digitalWrite(ONE_WIRE_POWER, HIGH); // turn DS18B20 sensor on
+    delay(10); // Allow 10ms for the sensor to be ready
+
+    uint8_t num_devices = start_ds18b20(&ds18b20, ONE_WIRE_POWER);
+    if (num_devices == 0)
+    {
+        //delete ds18b20;
+        //ds18b20 = NULL;
+        stop_ds18b20(ONE_WIRE_POWER);
+        #ifdef USE_SERIAL
+        Serial.print("no Dallas DS18B20 found\n\r");
+        #endif
+
+    }
+    else
+    {
+        #ifdef USE_SERIAL
+        Serial.print(num_devices, DEC);
+        Serial.println(" DS18B20 devices found.");
+        Serial.flush();
+        #endif
+    }
+}
+
+static void Measure_DS18B20(Payload& msg);
+static void Measure_DS18B20(Payload& msg)
+{
+    float temperature;
+    uint8_t num_devices = start_ds18b20(&ds18b20, ONE_WIRE_POWER);
+    if (num_devices > 0)
+    {
+        ds18b20.requestTemperatures();
+
+        temperature = ds18b20.getTempCByIndex(0);
+        msg.temp = floor(temperature * 100 + 10000.5);
+        #ifdef USE_SERIAL
+        Serial.print("Temp: ");Serial.print(temperature); Serial.println(" degC");
+        #endif
+        stop_ds18b20(ONE_WIRE_POWER); // Turn off power Pin for DS18B20
+    }
+    delay(65); // add delay to allow wdtimer to increase in case its erroneous
+    #ifdef USE_SERIAL
+    for (uint8_t i =1; i< num_devices; i++)
+    {
+         Serial.print("Temp "); Serial.print(i); Serial.print(": "); Serial.print(ds18b20.getTempCByIndex(i)); Serial.println(" degC");
+    }
+    #endif
 }
 #endif
 
@@ -540,7 +636,7 @@ static void wake_from_sleep_service_routine(void)
 
 
         // switch ON PIR after dead time
-        pir_inhibit_expired = (pir_inhibit_counter >= node.PIRDisableDelay) && pir_is_off;
+        pir_inhibit_expired = (pir_inhibit_counter >= node.PIRDisableDelay) && pir_is_off && node.Flag_PIR_enable;
         if (pir_inhibit_expired) // Totzeit fuer PIR ist abgelaufen
         {
             pir_inhibit_counter = 0;
@@ -577,6 +673,8 @@ static void wake_from_sleep_service_routine(void)
             Measure_HTU21D(msg);
             #elif defined USE_BME280
             Measure_BME280(msg);
+            #elif defined USE_DS18B20
+            Measure_DS18B20(msg);
             #endif
             //if (node.Flag_heartbeat_enable) geht so nicht!
             do_send(&sendjob, (uint8_t*)&msg, sizeof(msg));
@@ -638,6 +736,8 @@ static void wake_from_sleep_service_routine(void)
                 Measure_HTU21D(msg);
                 #elif defined USE_BME280
                 Measure_BME280(msg);
+                #elif defined USE_DS18B20
+                Measure_DS18B20(msg);
                 #endif
                 event_triggered =0;
                 do_send(&sendjob, (uint8_t*)&msg, sizeof(msg));
@@ -873,7 +973,7 @@ void setup() {
          init_Led(node.LedPin_K);
     }
 
-    pinMode(node.PIRVccPin, OUTPUT);
+    
 
 
 
@@ -927,21 +1027,29 @@ void setup() {
         pinMode(node.PCI0Pin, node.PCI0Trig>>2);  // set the pin to input or input with Pullup
         attachPinChangeInterrupt(digitalPinToPinChangeInterrupt(node.PCI0Pin), wakeUp0, node.PCI0Trig&0x3);
     }
-    if (node.PIRPin >=0) // THE PIR SENSOR, do not change these settings!
+    
+    if (node.PIRPin >=0  && node.PIRVccPin >=0) // THE PIR SENSOR, do not change these settings!
     {
         pinMode(node.PIRPin, INPUT);
         // turn PIR Sensor ON so that it works immediately after start up.
         // But do activate the interrupt AFTER this so that no event is triggered.
+        pinMode(node.PIRVccPin, OUTPUT);
         digitalWrite(node.PIRVccPin, HIGH);
         pir_is_off = false;
         delay(100);
         attachPinChangeInterrupt(digitalPinToPinChangeInterrupt(node.PIRPin), wakeUp1, RISING);
     }
+    else
+    {
+        node.Flag_PIR_enable =0;
+    }
+    
     if (node.PCI2Pin >=0)
     {
         pinMode(node.PCI2Pin, node.PCI2Trig>>2);  // set the pin to input or input with Pullup
         attachPinChangeInterrupt(digitalPinToPinChangeInterrupt(node.PCI2Pin), wakeUp2, node.PCI2Trig&0x3);
     }
+    
     if (node.PCI3Pin >=0)
     {
         pinMode(node.PCI3Pin, node.PCI3Trig>>2);  // set the pin to input or input with Pullup
@@ -953,14 +1061,20 @@ void setup() {
     digitalWrite(node.I2CPowerPin, HIGH);
     delay(5);
     
-
+    #ifdef USE_HTU21D
     Start_HTU21D();
+    #elif defined USE_BME280
     Start_BME280();
+    #elif defined USE_DS18B20
+    Start_DS18B20();
+    #endif
     digitalWrite(node.I2CPowerPin, LOW);
     if (USE_I2C_PULLUPS) // make i2c Pins inputs for sleep mode.
     {
         pinMode(SDAPIN, INPUT);
+        #ifndef USE_DS18B20
         pinMode(SCLPIN, INPUT);
+        #endif
     } 
     
     
@@ -1063,6 +1177,8 @@ void setup() {
     Measure_BME280(msg);
     #elif defined USE_HTU21D
     Measure_HTU21D(msg);
+    #elif defined USE_DS18B20
+    Measure_DS18B20(msg);
     #endif
     
     do_send(&sendjob, (uint8_t*)&msg, sizeof(msg));

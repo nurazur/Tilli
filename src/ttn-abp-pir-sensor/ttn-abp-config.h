@@ -1,16 +1,17 @@
 /*
-This configuration file contains 3 typical configurations:
+This configuration file contains 4 typical configurations:
 TINO1: PIR + HTU21D (motion Sensor + temperature + humidity )
 TINO2: PIR  (motion sensor only)
 TINO3: PIR + BME280 (motion Sensor + temperature + humidity + barometric pressure)
-
+TINO4: PIR + DS18B20 Temperature sensor(s)
 PIR can be disabled by setting node.Flag_PIR_enable=0;
+Due to limited flash space, sensors are mutually exclusive. 
 */
 
 #define TINO1
 //#define TINO2
 //#define TINO3
-
+//#define TINO4
 
 #ifdef TINO1
 // LoRaWAN NwkSKey, network session key
@@ -39,7 +40,7 @@ static const u4_t DEVADDR = 0x0; // <-- Change this address for every node!
 // select which sensor is used
 //#define USE_BME280
 #define USE_HTU21D
-
+//#define USE_DS18B20
 
 
 #elif defined TINO2
@@ -49,8 +50,10 @@ static const u4_t DEVADDR = 0x0;
 
 #define REFERENCE_VALUE 1138500
 #define TX_INTERVAL 3280
+
 //#define USE_BME280
 //#define USE_HTU21D
+//#define USE_DS18B20
 
 
 
@@ -65,7 +68,22 @@ static const u4_t DEVADDR = 0x0;
 
 #define USE_BME280
 //#define USE_HTU21D
+//#define USE_DS18B20
 
+
+
+#elif defined TINO4
+//for Testing of BME280
+static const PROGMEM u1_t NWKSKEY[16] = { 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00 };
+static const u1_t PROGMEM APPSKEY[16] = { 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00 };
+static const u4_t DEVADDR = 0x0;
+
+#define REFERENCE_VALUE 1135200
+#define TX_INTERVAL 1680
+
+//#define USE_BME280
+//#define USE_HTU21D
+#define USE_DS18B20
 #endif
 
 
