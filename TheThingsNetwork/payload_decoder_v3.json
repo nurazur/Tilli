@@ -1,10 +1,9 @@
-function Decoder(bytes, port)
-{
+function decodeUplink(input) {
+  var bytes = input.bytes;
   var event = bytes[0];
-
   var event_str="";
 
-
+ 
   if(event ===0)
   {
     event_str = 'Restart';
@@ -13,52 +12,51 @@ function Decoder(bytes, port)
   {
     event_str = "Heartbeat";
   }
-  if (event&0x2)
+  else if (event==2)
   {
-    event_str += "Taste";
+    event_str = "PCI0";
   }
-  if(event&0x4)
+  else if(event == 4)
   {
-    event_str += ",PIR";
+    event_str = "PIR";
   }
-  if (event&0x8) event_str += ",VIB";
-  if (event&0x10) event_str += ",PCI3";
+  else if (event == 8) event_str = "PCI2";
+  else if (event== 16) event_str = "PCI3";
 
   var count = bytes[2]<<8 | bytes[1];
   var vcc = bytes[4]<<8 | bytes[3];
   var bri = bytes[5];
   var temp, hum, pres;
-
+  
   if (bytes.length >=11)
   {
-    pres  = (bytes[10]<<8 | bytes[9])/100.0 + 500;
+    pres  = (bytes[10]<<8 | bytes[9])/100.0 + 500; 
     pres = Math.round(pres * 100) / 100;
-
+    
     temp = (bytes[7]<<8 | bytes[6])/100.0-100;
     temp = Math.round(temp * 100) / 100;
-
+    
     hum = bytes[8] / 2.0;
-    return {event: event_str, count: count, vcc:vcc, H:bri, T:temp, RH:hum, P:pres};
+    return {data:{event: event_str, count: count, vcc:vcc, H:bri, T:temp, RH:hum, P:pres}};
   }
   else if (bytes.length >= 9)
   {
     temp = (bytes[7]<<8 | bytes[6])/100.0-100;
     temp = Math.round(temp * 100) / 100;
-
+    
     hum = bytes[8] / 2.0;
-
-    return {event: event_str, count: count, vcc:vcc, H:bri, T:temp, RH:hum};
+    
+    return {data:{event: event_str, count: count, vcc:vcc, H:bri, T:temp, RH:hum}};
   }
   else if (bytes.length ==8)
   {
     temp = (bytes[7]<<8 | bytes[6])/100.0-100;
     temp = Math.round(temp * 100) / 100;
-    return {event: event_str, count: count, vcc:vcc, H:bri, T:temp};
-
+    return {data:{event: event_str, count: count, vcc:vcc, H:bri, T:temp}};
+    
   }
   else
   {
-    return {event: event_str, H:bri, count: count, vcc:vcc};
+    return {data:{event: event_str, H:bri, count: count, vcc:vcc}};
   }
 }
-
