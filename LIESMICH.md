@@ -77,9 +77,9 @@ dadurch kostengünstig zu beschaffen.
 - Open Source Software C++
 - Software kann einfach individuell angepasst werden
 - Programmierung mit Arduino IDE
-- ~~Konfiguration der Nodes über serielles Interface (FTDI Adapter)~~
+- Konfiguration der Nodes über serielles Interface (FTDI Adapter)
 - Konfigurations- und Kalibrierdaten im EEPROM gespeichert.
-- ~~EEPROM verschlüsselt~~
+- EEPROM verschlüsselt
 - Flashen
   - mit ISP Adapter oder
   - seriell mit FTDI Adapter über Bootloader
